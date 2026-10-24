@@ -1,8 +1,9 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, EmailVerificationToken
 from django.contrib.auth.password_validation import validate_password as django_validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-
+from django.core.mail import send_mail
+from django.conf import settings
 class RegisterSerializer(serializers.ModelSerializer):
     
     password = serializers.CharField(write_only=True)
@@ -34,4 +35,27 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)
+        verification_token = EmailVerificationToken.generate_token(user)
+        send_mail(
+            'Verify your email',
+            f'http://127.0.0.1:8000/api/accounts/verify-email/?token={verification_token.token}',
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
         return user
+    
+
+class ResendVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    
+    def validate_email(self, value):
+        try:
+            user = User.objects.get(email=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError('User does not exist')
+        if user.is_active:
+            raise serializers.ValidationError('Email already verified')
+        return value
+
+        

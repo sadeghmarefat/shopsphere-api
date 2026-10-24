@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.conf import settings
+import secrets
+from django.utils import timezone
+from datetime import timedelta
 # Create your models here.
 
 
@@ -50,3 +53,19 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.user.first_name
+    
+    
+class EmailVerificationToken(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='email_verification_token')
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def __str__(self):
+        return self.user.email
+    
+    @classmethod
+    def generate_token(cls, user):
+        token = secrets.token_urlsafe(32)
+        expires_at = timezone.now() + timedelta(minutes=15)
+        return cls.objects.create(user=user, token=token, expires_at=expires_at)
