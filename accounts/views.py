@@ -26,7 +26,7 @@ class VerifyEmailView(APIView):
             return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            verification=EmailVerificationToken.objects.get(token=token)
+            verification = EmailVerificationToken.objects.get(token=token)
         except EmailVerificationToken.DoesNotExist:
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -43,15 +43,17 @@ class VerifyEmailView(APIView):
 class ResendVerificationView(APIView):
     permission_classes = [AllowAny]
     serializer_class = ResendVerificationSerializer
+    
     def post(self, request):
         serializer = ResendVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = User.objects.get(email=serializer.validated_data['email'])
         EmailVerificationToken.objects.filter(user=user).delete()
         verification_token = EmailVerificationToken.generate_token(user)
+        verification_url = f"{settings.FRONTEND_URL}/verify-email/?token={verification_token.token}"
         send_mail(
             'Verify your email',
-            f'http://127.0.0.1:8000/api/accounts/verify-email/?token={verification_token.token}',
+            verification_url,
             settings.DEFAULT_FROM_EMAIL,
             [user.email],
             fail_silently=False,

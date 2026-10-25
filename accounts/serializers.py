@@ -36,9 +36,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)
         verification_token = EmailVerificationToken.generate_token(user)
+        verification_url = f"{settings.FRONTEND_URL}/verify-email/?token={verification_token.token}"
         send_mail(
             'Verify your email',
-            f'http://127.0.0.1:8000/api/accounts/verify-email/?token={verification_token.token}',
+            verification_url,
             settings.DEFAULT_FROM_EMAIL,
             [user.email],
             fail_silently=False,
@@ -57,5 +58,3 @@ class ResendVerificationSerializer(serializers.Serializer):
         if user.is_active:
             raise serializers.ValidationError('Email already verified')
         return value
-
-        
